@@ -1,0 +1,17 @@
+#ifndef H_GLOBAL_DEFINES
+#define H_GLOBAL_DEFINES
+
+#define MONITOR_SPEED 115200
+
+#define DEBOUNCE 150
+
+#define MEASURE_TASK "MEASURE"
+#define DRAW_TASK "DRAW"
+#define ISR_TASK "ISR"
+
+#define START_EVENT 1<<0
+#define UPSCROLL_EVENT 1<<1
+#define DOWNSCROLL_EVENT 1<<2
+#define UTIL_EVENT 1<<3
+
+#endif
