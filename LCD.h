@@ -5,9 +5,11 @@
 #include <Arduino.h>
 
 const uint8_t ARRU = 1;
-const uint8_t ARRD = 2; 
-const uint8_t DEGR = 3;
-const uint8_t BELL = 4;
+const uint8_t ARRD = 2;
+const uint8_t ARRL = 3;
+const uint8_t ARRR = 4; 
+const uint8_t DEGR = 5;
+const uint8_t BELL = 6;
 
 class LCD : public  LiquidCrystal {  
 public:
@@ -25,7 +27,6 @@ private:
   ~LCD() {}
 
   LCD(LCD&) = delete;
-  LCD(LCD&&) = delete;
 };
 
 #endif

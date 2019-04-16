@@ -3,6 +3,10 @@
 #include "LCD.h"
 #include "RTC.h"
 #include "Global_defines.h"
+#include <string>
+
+extern TaskHandle_t isr_task_handle;
+extern TaskHandle_t draw_task_handle;
 
 const char* WEEKDAYS[] {
   "Sunday",
@@ -25,15 +29,17 @@ static struct {
 static int indexTop = 0;
 static int indexBottom = 1;
 
-char clk[17];
-char date[17];
-char temperature[17];
-char weekday[17];
+char clk[32];
+char date[32];
+char temperature[32];
+char weekday[32];
+char dennis[32];
 
 char *order[] = {
     clk,
     date,
     weekday,
+    dennis,
     temperature
 };
 
@@ -42,13 +48,17 @@ static void renderRows() {
   sprintf(clk, "%02d:%02d:%02d", Data.now.hour(), Data.now.minute(), Data.now.second());
   sprintf(date, "%02d/%02d/%04d", Data.now.day(), Data.now.month(), Data.now.year());
   sprintf(weekday,WEEKDAYS[Data.now.dayOfTheWeek()]); 
-  sprintf(temperature,"%d,%d%s%c",RTC::getInstance()->getTemperatureHigh(),RTC::getInstance()->getTemperatureLow(),"\x03",'C');
+  sprintf(temperature,"%d,%d%s%c",RTC::getInstance()->getTemperatureHigh(),RTC::getInstance()->getTemperatureLow(),"\x05",'C');
+  sprintf(dennis,"Stinke Vinke");
+}
 
-  // UI
-  sprintf(order[indexTop],"%-13s%1s %1s",order[indexTop],Data.alarm1?"\x04":" ");
-  sprintf(order[indexBottom],"%-13s%1s %1s",order[indexBottom],Data.alarm2?"\x04":" ");
-  order[indexTop][15] = indexTop!=0 ? ARRU : 0;
-  order[indexBottom][15] = indexBottom!=(sizeof(order)/4-1) ? ARRD : 0;
+static void printUI(LCD *lcd) {
+  lcd->setCursor(13,0);
+  lcd->print(Data.alarm1 ? "\x06 " : "  ");
+  lcd->write(indexTop != 0 ? byte(ARRR) : byte(32));
+  lcd->setCursor(13,1);
+  lcd->print(Data.alarm2 ? "\x06 " : "  ");
+  lcd->write(indexBottom != (sizeof(order)/4-1) ? byte(ARRL) : byte(32) );
 }
 
 static void printRows() {
@@ -58,6 +68,7 @@ static void printRows() {
   lcd->print(order[indexTop]);
   lcd->setCursor(0, 1);
   lcd->print(order[indexBottom]);
+  printUI(lcd);
 }
 
 void measureTaskFnc(void *) {
@@ -74,7 +85,6 @@ void measureTaskFnc(void *) {
 void drawTaskFnc(void *) {
   for(;;) {
     xTaskNotifyWait(pdFALSE, ULONG_MAX, NULL, portMAX_DELAY);
-    Serial.println("Drawing");
     renderRows(); // 0ms
     printRows();  // 10ms 
   }

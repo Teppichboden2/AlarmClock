@@ -13,5 +13,6 @@
 #define UPSCROLL_EVENT 1<<1
 #define DOWNSCROLL_EVENT 1<<2
 #define UTIL_EVENT 1<<3
+#define ALARM_EVENT 1<<4
 
 #endif

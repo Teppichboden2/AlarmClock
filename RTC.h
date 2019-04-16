@@ -23,7 +23,6 @@ private:
   ~RTC() {}
 
   RTC(RTC&) = delete;
-  RTC(RTC&&) = delete;
 };
 
 #endif

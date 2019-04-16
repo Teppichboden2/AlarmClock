@@ -59,6 +59,28 @@ void LCD::createChars() {
     B00100
   };
 
+  byte arrowleft[] = {
+    B00000,
+    B00000,
+    B00100,
+    B01100,
+    B11111,
+    B01100,
+    B00100,
+    B00000
+  };
+
+  byte arrowright[] = {
+    B00000,
+    B00000,
+    B00100,
+    B00110,
+    B11111,
+    B00110,
+    B00100,
+    B00000
+  };
+
   uint8_t degree[] = {
     B01100,
     B10010,
@@ -73,5 +95,7 @@ void LCD::createChars() {
   this->createChar(BELL, bell);
   this->createChar(ARRU, arrowup);
   this->createChar(ARRD, arrowdown);
+  this->createChar(ARRL, arrowleft);
+  this->createChar(ARRR, arrowright);
   this->createChar(DEGR, degree);
 }

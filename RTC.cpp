@@ -5,8 +5,6 @@ static uint8_t bcd2bin (uint8_t val) { return val - 6 * (val >> 4); }
 RTC* RTC::instance = nullptr;
 
 RTC* RTC::getInstance() {
-
-  
   return instance;
 }
 
