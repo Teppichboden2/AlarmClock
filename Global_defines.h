@@ -15,4 +15,11 @@
 #define UTIL_EVENT 1<<3
 #define ALARM_EVENT 1<<4
 
+#define DAILY 1
+#define WEEKLY 2
+#define ONCE 3
+
+#define ALARM_1 1
+#define ALARM_2 0
+
 #endif
