@@ -7,10 +7,12 @@
 
 extern TaskHandle_t isr_task_handle = NULL;
 extern TaskHandle_t draw_task_handle = NULL;
+extern TaskHandle_t measure_task_handle = NULL;
 
 const int UP_BUTTON = 34;
 const int DOWN_BUTTON = 35;
-const int UTIL_BUTTON = 32;
+const int UTIL_BUTTON = 25;
+const int BACK_BUTTON = 32;
 
 void setup() {
   Serial.begin(MONITOR_SPEED);
@@ -27,19 +29,25 @@ void setup() {
   pinMode(UP_BUTTON, INPUT);
   pinMode(DOWN_BUTTON, INPUT);
   pinMode(UTIL_BUTTON, INPUT);
+  pinMode(BACK_BUTTON, INPUT);
   attachInterrupt(digitalPinToInterrupt(UP_BUTTON),scrollup_ISR,RISING);
   attachInterrupt(digitalPinToInterrupt(DOWN_BUTTON),scrolldown_ISR,RISING);
   attachInterrupt(digitalPinToInterrupt(UTIL_BUTTON),util_ISR,RISING);
+  attachInterrupt(digitalPinToInterrupt(BACK_BUTTON),scrollback_ISR,RISING);
 
   // Tasks
-  PeriodicTask *measure = new PeriodicTask(MEASURE_TASK,measureTaskFnc,3000,prioNORMAL,1000,0);
-  PeriodicTask *draw = new PeriodicTask(DRAW_TASK,drawTaskFnc,3000,prioNORMAL,0,1);
+  PeriodicTask *measure = new PeriodicTask(MEASURE_TASK,measureTaskFnc,3000,prioNORMAL,0,0);
+  PeriodicTask *draw = new PeriodicTask(DRAW_TASK,drawTaskFnc,3000,prioNORMAL,0,0);
   PeriodicTask *interrupt = new PeriodicTask(ISR_TASK,interruptTaskFnc,3000,prioREALTIME,0,0);
+  PeriodicTask *notify = new PeriodicTask(NOTIFY_TASK,notifyTaskFnc,3000,prioNORMAL,1000,0);
+
   
   isr_task_handle = interrupt->getHandle();
   draw_task_handle = draw->getHandle();
+  measure_task_handle = measure->getHandle();
   
   draw->start();
+  notify->start();
   measure->start();
   interrupt->start();
 

@@ -3,83 +3,119 @@
 #include "LCD.h"
 #include "RTC.h"
 #include "Global_defines.h"
-#include <string>
 
-extern TaskHandle_t isr_task_handle;
-extern TaskHandle_t draw_task_handle;
-
-const char* WEEKDAYS[] {
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday"
-};
-
-static struct {
-  DateTime now;
-  DateTime alarm_1;
-  DateTime alarm_2;
-
-  uint8_t alarm1_mode;
-  uint8_t alarm2_mode;
-
-  bool alarm1;
-  bool alarm2;
-} Data;
-
+// Indexes for Dennis
 static int indexTop = 0;
 static int indexBottom = 1;
+static int currentArea = 0;
+static int currentSize = 0;
+static int state = IDLE;
 
-char clk[32];
-char date[32];
-char temperature[32];
-char weekday[32];
-char a1[32];
-char a2[32];
+// Buffers for DateTime Menu
+char timeBuf[32];
+char dateBuf[32];
+char temperatureBuf[32];
+char weekdayBuf[32];
 
-char *order[] = {
-    clk,
-    date,
-    weekday,
-    a1,
-    a2,
-    temperature
+// Buffers for alarm1 Menu
+char alarm1Time[32];
+char alarm1Mode[32] = "Daily???";
+
+// Buffers for alarm2 Menu
+char alarm2Time[32];
+char alarm2Mode[32];
+
+char *area0[] = {
+    timeBuf,
+    dateBuf,
+    weekdayBuf,
+    temperatureBuf
 };
+
+char *area1[] = {
+    alarm1Time,
+    alarm1Mode
+};
+
+char *area2[] = {
+    alarm2Time,
+    alarm2Mode
+};
+
+char *area3[] = {
+  "Date/Time",
+  "Alarm 1",
+  "Alarm 2",
+  "To the top",
+  ""
+};
+
+static uint8_t a0size = sizeof(area0) / 4;
+static uint8_t a1size = sizeof(area1) / 4;
+static uint8_t a2size = sizeof(area2) / 4;
+static uint8_t a3size = sizeof(area3) / 4;
+
+char **areas[] = {
+  area0,
+  area1,
+  area2,
+  area3
+};
+
+uint8_t sizes[] = {
+  sizeof(area0) / 4,
+  sizeof(area1) / 4,
+  sizeof(area2) / 4,
+  sizeof(area3) / 4
+};
+
+static void switchArea(uint8_t area) {
+  if(state == IDLE) {
+    indexTop = 0;
+    indexBottom = 1;
+    
+    currentArea = area;
+    currentSize = sizes[area];
+  }
+}
 
 static void renderRows() {
   // Data
   RTC *rtc = RTC::getInstance();
-  sprintf(clk, "%02d:%02d:%02d", Data.now.hour(), Data.now.minute(), Data.now.second());
-  sprintf(date, "%02d/%02d/%04d", Data.now.day(), Data.now.month(), Data.now.year());
-  sprintf(weekday,WEEKDAYS[Data.now.dayOfTheWeek()]); 
-  sprintf(temperature,"%d,%d%s%c",rtc->getTemperatureHigh(),rtc->getTemperatureLow(),"\x05",'C');
-  sprintf(a1,"A1:%02d:%02d %02d.",rtc->alarm1().hour(), rtc->alarm1().minute(), rtc->alarm1().day());
-  sprintf(a2,"A2:%02d:%02d %02d.",rtc->alarm2().hour(), rtc->alarm2().minute(), rtc->alarm2().day());
+  sprintf(timeBuf, "%02d:%02d:%02d", Data.now.hour(), Data.now.minute(), Data.now.second());
+  sprintf(dateBuf, "%02d/%02d/%04d", Data.now.day(), Data.now.month(), Data.now.year());
+  sprintf(weekdayBuf,WEEKDAYS[Data.now.dayOfTheWeek()]); 
+  sprintf(temperatureBuf,"%d,%d%s%c",rtc->getTemperatureHigh(),rtc->getTemperatureLow(),"\x05",'C');
+  sprintf(alarm1Time,"A1:%02d:%02d %02d.",rtc->alarm1().hour(), rtc->alarm1().minute(), rtc->alarm1().day());
+  sprintf(alarm2Time,"A2:%02d:%02d %02d.",rtc->alarm2().hour(), rtc->alarm2().minute(), rtc->alarm2().day());
 }
 
 static void printUI(LCD *lcd) {
   lcd->setCursor(13,0);
-  lcd->print(Data.alarm1 ? "\x06 " : "  ");
+  lcd->write(Data.alarm1 ? "\x06" : " ");
+  lcd->write( (currentArea == AREA_3) ? byte(ARRR) : byte(ARRL) );
   lcd->write(indexTop != 0 ? byte(ARRU) : byte(32));
   lcd->setCursor(13,1);
-  lcd->print(Data.alarm2 ? "\x06 " : "  ");
-  lcd->write(indexBottom != (sizeof(order)/4-1) ? byte(ARRD) : byte(32) );
+  lcd->write(Data.alarm2 ? "\x06 " : "  ");
+  lcd->write(indexBottom != (currentSize-1) ? byte(ARRD) : byte(32) );
 }
 
 static void printRows() {
   LCD *lcd = LCD::getInstance();
   lcd->clear();  
   lcd->setCursor(0, 0);
-  lcd->print(order[indexTop]);
+  lcd->print(areas[currentArea][indexTop]);
   lcd->setCursor(0, 1);
-  lcd->print(order[indexBottom]);
+  lcd->print(areas[currentArea][indexBottom]);
   printUI(lcd);
 }
 
 void drawTaskFnc(void *) {
+
+  // Begin in area 0
+  switchArea(AREA_0);
+  Serial.println(sizeof(sizes));
+  
   for(;;) {
     xTaskNotifyWait(pdFALSE, ULONG_MAX, NULL, portMAX_DELAY);
     renderRows(); // 0ms
@@ -88,15 +124,18 @@ void drawTaskFnc(void *) {
 }
 
 void measureTaskFnc(void *) {
-  static uint8_t secondOld = 0;
-  Data.now = RTC::getInstance()->now();
+  uint8_t secondOld = 0;
+  for(;;) {
+    uint32_t notifyBits;
+    xTaskNotifyWait(pdFALSE, ULONG_MAX, &notifyBits, portMAX_DELAY);
 
-  if(Data.now.second() != secondOld) {
-    secondOld = Data.now.second();
-    //Serial.printf("Alarm 1: %02d:%02d Uhr am %02d.\n",RTC::getInstance()->alarm1().hour(),RTC::getInstance()->alarm1().minute(),RTC::getInstance()->alarm1().day());
-    //Serial.printf("Alarm 2: %02d:%02d Uhr am %02d.\n\n",RTC::getInstance()->alarm2().hour(),RTC::getInstance()->alarm2().minute(),RTC::getInstance()->alarm2().day());
-    // Notify drawing task on core 1
-    xTaskNotify(draw_task_handle,0,eNoAction);
+    if(notifyBits & MEASURE_EVENT) {
+      Data.now = RTC::getInstance()->now();
+      if(Data.now.second() != secondOld) {
+        secondOld = Data.now.second();
+        xTaskNotify(draw_task_handle,0,eNoAction);
+      }
+    }
   }
 }
 
@@ -123,15 +162,33 @@ void interruptTaskFnc(void *) {
 
     // Downscroll Button
     if(notifyBits & DOWNSCROLL_EVENT) {
-      if(indexBottom != sizeof(order)/4 -1) {
+      if(indexBottom != (currentSize-1)) {
         ++indexTop;
         ++indexBottom; 
       }
     }
 
-    // Notify drawing task on core 1
+    // Backscroll Button
+    if(notifyBits & BACKSCROLL_EVENT) {
+      switch(currentArea) {
+        case AREA_0:
+        case AREA_1:
+        case AREA_2:
+          switchArea(AREA_3);
+          break;
+        case AREA_3:
+          switchArea(indexTop < sizeof(sizes) ? indexTop : sizeof(sizes));
+          break;
+        default:  ;
+      }
+    }
+
     xTaskNotify(draw_task_handle,0,eNoAction);  
   }
+}
+
+void notifyTaskFnc(void *) {
+  xTaskNotify(measure_task_handle,MEASURE_EVENT,eSetBits);
 }
 
 void util_ISR() {
@@ -162,6 +219,17 @@ void scrolldown_ISR() {
 
   if(timer - last > DEBOUNCE) {
     xTaskNotifyFromISR(isr_task_handle,DOWNSCROLL_EVENT,eSetBits,NULL);
+  }
+  
+  last = timer;
+}
+
+void scrollback_ISR() {
+  static unsigned long last = 0;
+  unsigned long timer = millis();
+
+  if(timer - last > DEBOUNCE) {
+    xTaskNotifyFromISR(isr_task_handle,BACKSCROLL_EVENT,eSetBits,NULL);   
   }
   
   last = timer;
