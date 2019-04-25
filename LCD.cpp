@@ -59,7 +59,7 @@ void LCD::createChars() {
     B00100
   };
 
-  byte arrowleft[] = {
+  uint8_t arrowleft[] = {
     B00000,
     B00000,
     B00100,
@@ -70,7 +70,7 @@ void LCD::createChars() {
     B00000
   };
 
-  byte arrowright[] = {
+  uint8_t arrowright[] = {
     B00000,
     B00000,
     B00100,
